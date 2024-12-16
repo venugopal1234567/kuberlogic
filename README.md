@@ -73,3 +73,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
+
+# Create cluster
+```bash
+   kind create cluster --image kindest/node:v1.28.6
+   kind delete cluster
+```
+
+## Install ingress
+``` bash
+kubectl apply -f https://raw.githubusercontent.com/Kong/kubernetes-ingress-controller/v2.12.0/deploy/single/all-in-one-dbless.yaml
+```
+
+## install kuberlogic
+```bash
+./kuberlogic_x86_64_darwin install
+kubectl apply -f webhook-server-cert.yaml
+kubectl apply -f modules/dynamic-operator/config/crd/patches/webhook_in_kuberlogicservices.yaml -n kuberlogic
+
+```

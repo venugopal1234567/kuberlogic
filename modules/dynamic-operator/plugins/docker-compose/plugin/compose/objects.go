@@ -328,7 +328,7 @@ func (c *ComposeModel) setApplicationObjects(req *commons.PluginRequest) error {
 			}
 
 			container.ReadinessProbe = &corev1.Probe{
-				Handler: corev1.Handler{
+				ProbeHandler: corev1.ProbeHandler{
 					HTTPGet: &corev1.HTTPGetAction{
 						Path: healthz,
 						Port: intstr.FromString(port.Name),
