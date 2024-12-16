@@ -10,6 +10,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 // log is for logging in this package.
@@ -42,25 +43,25 @@ func (r *KuberlogicServiceBackup) Default() {
 var _ webhook.Validator = &KuberlogicServiceBackup{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *KuberlogicServiceBackup) ValidateCreate() error {
+func (r *KuberlogicServiceBackup) ValidateCreate() (warnings admission.Warnings, err error) {
 	kuberlogicservicebackuplog.Info("validate create", "name", r.Name)
 	if !backupsEnabled {
-		return backupsDisabledError
+		return warnings, backupsDisabledError
 	}
-	return nil
+	return warnings, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *KuberlogicServiceBackup) ValidateUpdate(old runtime.Object) error {
+func (r *KuberlogicServiceBackup) ValidateUpdate(old runtime.Object) (warnings admission.Warnings, err error) {
 	kuberlogicservicebackuplog.Info("validate update", "name", r.Name)
 	if !backupsEnabled {
-		return backupsDisabledError
+		return warnings, backupsDisabledError
 	}
-	return nil
+	return warnings, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *KuberlogicServiceBackup) ValidateDelete() error {
+func (r *KuberlogicServiceBackup) ValidateDelete() (warnings admission.Warnings, err error) {
 	kuberlogicservicebackuplog.Info("validate delete", "name", r.Name)
-	return nil
+	return warnings, nil
 }

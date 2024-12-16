@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/kuberlogic/kuberlogic/modules/dynamic-operator/plugin/commons"
 	"github.com/pkg/errors"
@@ -117,12 +118,12 @@ func (r *KuberLogicService) Default() {
 var _ webhook.Validator = &KuberLogicService{}
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *KuberLogicService) ValidateCreate() error {
+func (r *KuberLogicService) ValidateCreate() (warnings admission.Warnings, err error) {
 	log.Info("validate create", "name", r.Name)
 
 	if r.Spec.BackupSchedule != "" {
 		if validateScheduleFormat(r.Spec.BackupSchedule) != nil {
-			return errInvalidBackupSchedule
+			return warnings, errInvalidBackupSchedule
 		}
 	}
 
@@ -130,85 +131,85 @@ func (r *KuberLogicService) ValidateCreate() error {
 	if !ok {
 		err := errors.New("Plugin is not loaded")
 		log.Info(err.Error(), "type", r.Spec.Type)
-		return err
+		return warnings, err
 	}
 
 	req, err := makeRequest(r)
 	if err != nil {
-		return err
+		return warnings, err
 	}
 	if err = plugin.ValidateCreate(*req).Error(); err != nil {
-		return err
+		return warnings, err
 	}
 
 	if err = validateDomain(r.Spec.Domain); err != nil {
-		return err
+		return warnings, err
 	}
-	return nil
+	return warnings, nil
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *KuberLogicService) ValidateUpdate(old runtime.Object) error {
+func (r *KuberLogicService) ValidateUpdate(old runtime.Object) (warnings admission.Warnings, err error) {
 	log.Info("validate update", "name", r.Name)
 	oldSpec := old.(*KuberLogicService)
 
 	if r.Spec.BackupSchedule != "" {
 		if validateScheduleFormat(r.Spec.BackupSchedule) != nil {
-			return errInvalidBackupSchedule
+			return warnings, errInvalidBackupSchedule
 		}
 	}
 
 	// downsize volume is not supported
 	if vol := r.Spec.Limits[v1.ResourceStorage]; !vol.IsZero() &&
 		vol.Cmp(oldSpec.Spec.Limits[v1.ResourceStorage]) == -1 {
-		return errVolDownsizeForbidden
+		return warnings, errVolDownsizeForbidden
 	}
 
 	plugin, ok := pluginInstances[r.Spec.Type]
 	if !ok {
 		err := errors.Errorf("Plugin is not loaded: %s", r.Spec.Type)
 		log.Info(err.Error(), "type", r.Spec.Type)
-		return err
+		return warnings, err
 	}
 
 	req, err := makeRequest(r)
 	if err != nil {
-		return err
+		return warnings, err
 	}
 
 	if err = plugin.ValidateUpdate(*req).Error(); err != nil {
-		return err
+		return warnings, err
 	}
 
 	if r.Spec.Domain != oldSpec.Spec.Domain {
 		if err = validateDomain(r.Spec.Domain); err != nil {
-			return err
+			return warnings, err
 		}
 	}
 
-	return nil
+	return warnings, nil
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *KuberLogicService) ValidateDelete() error {
+func (r *KuberLogicService) ValidateDelete() (warnings admission.Warnings, err error) {
 	log.Info("validate delete", "name", r.Name)
 
 	plugin, ok := pluginInstances[r.Spec.Type]
 	if !ok {
 		err := errors.New("Plugin is not loaded")
 		log.Info(err.Error(), "type", r.Spec.Type)
-		return err
+		return warnings, err
 	}
 
 	req, err := makeRequest(r)
 	if err != nil {
-		return err
+		return warnings, err
 	}
 
 	if err := plugin.ValidateDelete(*req).Error(); err != nil {
-		return err
+		return warnings, err
 	}
-	return nil
+	return warnings, nil
 }
 
 func makeRequest(kls *KuberLogicService) (*commons.PluginRequest, error) {

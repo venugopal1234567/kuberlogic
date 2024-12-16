@@ -17,13 +17,13 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
-	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionv1 "k8s.io/api/admission/v1"
 
 	cfg2 "github.com/kuberlogic/kuberlogic/modules/dynamic-operator/cfg"
 	"github.com/kuberlogic/kuberlogic/modules/dynamic-operator/plugin/commons"
 	corev1 "k8s.io/api/core/v1"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	//+kubebuilder:scaffold:imports
@@ -31,8 +31,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
-	"sigs.k8s.io/controller-runtime/pkg/envtest/printer"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	log1 "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
@@ -53,14 +52,11 @@ var pluginMap = map[string]plugin.Plugin{
 
 func TestWebhookAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
-
-	RunSpecsWithDefaultAndCustomReporters(t,
-		"Webhook Suite",
-		[]Reporter{printer.NewlineReporter{}})
+	RunSpecs(t, "Webhook Suite")
 }
 
 var _ = BeforeSuite(func() {
-	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+	log1.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	config, err := cfg2.NewConfig()
 	Expect(err).NotTo(HaveOccurred())
@@ -71,7 +67,7 @@ var _ = BeforeSuite(func() {
 	err = AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = admissionv1beta1.AddToScheme(scheme)
+	err = admissionv1.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	err = corev1.AddToScheme(scheme)
@@ -89,7 +85,6 @@ var _ = BeforeSuite(func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(testK8sClient).NotTo(BeNil())
 	} else {
-
 		By("bootstrapping test environment")
 		testEnv = &envtest.Environment{
 			CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
@@ -119,7 +114,6 @@ var _ = BeforeSuite(func() {
 
 		pluginInstances := make(map[string]commons.PluginService)
 		for _, item := range config.Plugins {
-			// We're a host! Start by launching the plugin process.
 			pluginClient := plugin.NewClient(&plugin.ClientConfig{
 				HandshakeConfig: commons.HandshakeConfig,
 				Plugins:         pluginMap,
@@ -128,18 +122,15 @@ var _ = BeforeSuite(func() {
 			})
 			pluginClients = append(pluginClients, pluginClient)
 
-			// Connect via RPC
 			rpcClient, err := pluginClient.Client()
 			Expect(err).ToNot(HaveOccurred())
 
-			// Request the plugin
 			raw, err := rpcClient.Dispense(item.Name)
 			Expect(err).ToNot(HaveOccurred())
 
 			pluginInstances[item.Name] = raw.(commons.PluginService)
 		}
 
-		// start webhook server using Manager
 		webhookInstallOptions := &testEnv.WebhookInstallOptions
 		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 			Scheme:             scheme,
@@ -165,7 +156,6 @@ var _ = BeforeSuite(func() {
 			Expect(err).NotTo(HaveOccurred())
 		}()
 
-		// wait for the webhook server to get ready
 		dialer := &net.Dialer{Timeout: time.Second}
 		addrPort := fmt.Sprintf("%s:%d", webhookInstallOptions.LocalServingHost, webhookInstallOptions.LocalServingPort)
 		Eventually(func() error {
